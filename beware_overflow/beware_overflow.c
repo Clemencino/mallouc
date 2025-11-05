@@ -2,7 +2,7 @@
 
 void *beware_overflow(void *ptr, size_t nmemb, size_t size)
 {
-    int tot = 0;
+    size_t tot = 0;
     if (__builtin_mul_overflow(nmemb, size, &tot))
     {
         return NULL;
@@ -10,3 +10,4 @@ void *beware_overflow(void *ptr, size_t nmemb, size_t size)
     char *ret = ptr;
     return ret + tot;
 }
+

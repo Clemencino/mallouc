@@ -17,3 +17,8 @@ __attribute__((visibility("default"))) void *calloc(size_t nmemb, size_t size)
 {
     return NULL;
 }
+
+int main(void)
+{
+    return 0;
+}
