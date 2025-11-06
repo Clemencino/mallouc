@@ -3,17 +3,20 @@ CFLAGS = -std=c99 -pedantic -Werror -Wall -Wextra -Wvla -fvisibility=hidden -fPI
 CPPFLAGS = -D_DEFAULT_SOURCE
 LDFLAGS = -shared -Wl,--no-undefined
 
-SRCS = src/malloc.c
+SRCS = src/malloc.c src/bucket.c
 OBJS = ${SRCS:.c=.o}
 
-malloc.o: $(SRCS)
-	$(CC) -o malloc.o $(SRCS)
+library: $(OBJS)
+	$(CC) $(LDFLAGS) -o libmalloc.so $(OBJS)
 
-library:malloc.o
-	ar rcs libmalloc.so malloc.o
+src/malloc.o: src/malloc.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o src/malloc.o -c src/malloc.c
+
+src/bucket.o: src/bucket.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o src/bucket.o -c src/bucket.c 
 
 check:
-	./tests/test.sh
+	./tests/test2.sh
 
 clean:
-	$(RM) $(OBJS) $(TARGET) malloc.o libmalloc.so
+	$(RM) $(OBJS) libmalloc.so
