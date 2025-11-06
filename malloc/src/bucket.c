@@ -10,9 +10,10 @@ static struct bucket *g_buckets = NULL;
 void *page_begin(void *ptr, size_t page_size)
 {
     char *p = ptr;
-    size_t addr = (size_t)p;
-    addr -= addr % page_size;
-    return (void *)addr;
+    size_t pp = (size_t)p;
+    size_t mask = page_size - 1;
+    size_t alt = pp & mask;
+    return (p - alt);
 }
 
 struct bucket *bucket_find(size_t block_size)

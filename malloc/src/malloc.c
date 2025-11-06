@@ -1,7 +1,8 @@
 #include "malloc.h"
-#include <unistd.h>
+
 #include <stddef.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "bucket.h"
 
@@ -76,7 +77,7 @@ __attribute__((visibility("default"))) void *realloc(void *ptr, size_t size)
         to_copy = size;
     memcpy(new_ptr, ptr, to_copy);
     if (size > old_size)
-            memset((char *)new_ptr + old_size, 0, size - old_size);
+        memset((char *)new_ptr + old_size, 0, size - old_size);
 
     free(ptr);
     return new_ptr;
