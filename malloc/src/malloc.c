@@ -6,11 +6,20 @@
 
 #include "bucket.h"
 
-static size_t align8(size_t n)
+size_t align(size_t size)
 {
-    while (n % 8 != 0)
-        n += 1;
-    return n;
+    if (size % sizeof(long double) == 0)
+    {
+        return size;
+    }
+    size_t add = size % sizeof(long double);
+    size_t add2 = sizeof(long double) - add;
+    size_t res;
+    if (__builtin_add_overflow(size, add2, &res))
+    {
+        return 0;
+    }
+    return res;
 }
 
 static size_t next_pow2(size_t n)
@@ -33,7 +42,7 @@ __attribute__((visibility("default"))) void *malloc(size_t size)
 {
     if (size == 0)
         return NULL;
-    size = align8(size);
+    size = align(size);
     size_t block_size = next_pow2(size);
 
     struct bucket *b = bucket_find(block_size);
