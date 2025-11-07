@@ -2,6 +2,10 @@
 #define MALLOC_H
 
 #include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 void *malloc(size_t size);
 void free(void *ptr);

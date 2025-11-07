@@ -1,55 +1,81 @@
 #include "bucket.h"
 
-#include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <unistd.h>
-
+// all buckets
 static struct bucket *g_buckets = NULL;
 
-void *page_begin(void *ptr, size_t page_size)
-{
+// find page begin
+void *page_begin(void *ptr)
+{/*
     char *p = ptr;
     size_t pp = (size_t)p;
     size_t mask = page_size - 1;
     size_t alt = pp & mask;
     return (p - alt);
-}
-
-struct bucket *bucket_find(size_t block_size)
-{
+    */
     struct bucket *b = g_buckets;
+    char *p = ptr;
     while (b)
     {
-        if (b->block_size == block_size)
+        char *start = (char *)b->chunk;
+        char *end = start + b->block_size * b->capacity;
+        if (p >= start && p < end)
+        {
             return b;
+        }
         b = b->next;
     }
     return NULL;
 }
 
+// return the bucket of the size or NUll if not found
+struct bucket *bucket_find(size_t block_size)
+{
+    struct bucket *buck = g_buckets;
+    while (buck)
+    {
+        if (buck->block_size == block_size && buck->free)
+        {
+            return buck;
+        }
+        buck = buck->next;
+    }
+    return NULL;
+}
+
+// create a new bucket
 struct bucket *bucket_new(size_t block_size)
 {
-    long ps = sysconf(_SC_PAGESIZE);
-    size_t blocks_per_page = ps / block_size;
-    if (blocks_per_page == 0)
-        blocks_per_page = 1;
+    long page_size = sysconf(_SC_PAGESIZE);
+    size_t blocks_per_page = page_size / block_size;
 
-    size_t total_size = blocks_per_page * block_size;
-    void *mem =
-        mmap(NULL, total_size + sizeof(struct bucket), PROT_READ | PROT_WRITE,
-             MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    if (blocks_per_page == 0)
+    {
+        blocks_per_page = 1; // always (at least)one block
+    }
+
+    size_t total_size = blocks_per_page * block_size + sizeof(struct bucket);
+    void *mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE,
+                     MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     if (mem == MAP_FAILED)
+    {
         return NULL;
+    }
 
     struct bucket *b = mem;
+
+    
+    char *p = mem;
+    p += sizeof(struct bucket);
+    size_t rem = ((size_t)p) % sizeof(long double);
+    if (rem != 0)
+        p += sizeof(long double) - rem;
+    b->chunk = p;
     b->block_size = block_size;
     b->capacity = blocks_per_page;
-    b->chunk = (char *)mem + sizeof(struct bucket);
+    b->used = 0;
     b->next = g_buckets;
     g_buckets = b;
 
-    char *p = b->chunk;
     struct free_list *cur = (struct free_list *)p;
     b->free = cur;
     for (size_t i = 0; i < blocks_per_page - 1; i++)
@@ -64,22 +90,60 @@ struct bucket *bucket_new(size_t block_size)
     return b;
 }
 
-void *bucket_alloc(struct bucket *b)
+// find free block
+void *bucket_alloc(struct bucket *b, size_t block_size)
 {
+    struct free_list *f = NULL;
     if (!b->free)
-        return NULL;
-
-    struct free_list *f = b->free;
-    b->free = f->next;
+    {
+        struct bucket *new = bucket_new(block_size);
+        f = new->free;
+        new->free = f->next;
+    }
+    else
+    {
+        f = b->free;
+        b->free =
+        f->next;
+    }
+    b->used++;
     return (void *)f;
 }
 
+// block is free
 void bucket_free_block(struct bucket *b, void *ptr)
 {
     if (!ptr)
+    {
         return;
-
+    }
     struct free_list *f = ptr;
     f->next = b->free;
     b->free = f;
+    b->used--;
+
+    if (b->used == 0)
+    {
+        struct bucket *prev = NULL;
+        struct bucket *cur = g_buckets;
+        while (cur && cur != b)
+        {
+            prev = cur;
+            cur = cur->next;
+        }
+
+        if (cur)
+        {
+            if (prev)
+            {
+                prev->next = cur->next;
+            }
+            else
+            {
+                g_buckets = cur->next;
+            }
+
+            munmap(cur, cur->capacity * cur->block_size + sizeof(struct bucket));
+        }
+    }
 }

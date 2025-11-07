@@ -16,7 +16,7 @@ src/bucket.o: src/bucket.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o src/bucket.o -c src/bucket.c 
 
 check:
-	./tests/test2.sh
+	/tests/test2.sh
 
 clean:
 	$(RM) $(OBJS) libmalloc.so
